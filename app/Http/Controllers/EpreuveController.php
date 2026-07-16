@@ -2,9 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreEpreuveRequest;
 use App\Models\Epreuve;
+use App\Services\EpreuveUploadService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 
 class EpreuveController extends Controller
 {
@@ -52,24 +53,12 @@ class EpreuveController extends Controller
     /**
      * Enregistrement d'une nouvelle épreuve/corrigé.
      */
-    public function store(Request $request)
+    public function store(StoreEpreuveRequest $request, EpreuveUploadService $uploadService)
     {
-        $validated = $request->validate([
-            'titre' => 'required|string|max:255',
-            'filiere' => 'required|string|max:255',
-            'niveau' => 'required|string|max:50',
-            'matiere' => 'required|string|max:255',
-            'annee_academique' => 'required|string|max:20',
-            'type' => 'required|in:epreuve,corrige',
-            'fichier' => 'required|file|mimes:pdf|max:10240', // 10 Mo max, PDF uniquement
-        ]);
-
+        $validated = $request->validated();
         $fichier = $request->file('fichier');
-        $nomOriginal = $fichier->getClientOriginalName();
-        $nomStocke = Str::uuid() . '.pdf';
 
-        // Stocke le fichier dans storage/app/public/epreuves
-        $chemin = $fichier->storeAs('epreuves', $nomStocke, 'public');
+        $upload = $uploadService->storePdf($fichier);
 
         Epreuve::create([
             'titre' => $validated['titre'],
@@ -78,10 +67,11 @@ class EpreuveController extends Controller
             'matiere' => $validated['matiere'],
             'annee_academique' => $validated['annee_academique'],
             'type' => $validated['type'],
-            'chemin_fichier' => $chemin,
-            'nom_original' => $nomOriginal,
+            'chemin_fichier' => $upload['chemin_fichier'],
+            'nom_original' => $upload['nom_original'],
         ]);
 
-        return redirect()->route('epreuves.index')->with('succes', 'Votre document a bien été ajouté. Merci pour votre contribution !');
+        return redirect()->route('epreuves.index')
+            ->with('succes', 'Votre document a bien été ajouté. Merci pour votre contribution !');
     }
 }

@@ -61,7 +61,12 @@ class AdminController extends Controller
      */
     public function supprimerDocument(Epreuve $epreuve)
     {
-        Storage::disk('public')->delete($epreuve->chemin_fichier);
+        $disk = Storage::disk('public');
+
+        if ($epreuve->chemin_fichier && $disk->exists($epreuve->chemin_fichier)) {
+            $disk->delete($epreuve->chemin_fichier);
+        }
+
         $epreuve->delete();
 
         return back()->with('succes', 'Document supprimé.');
